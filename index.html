@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Calendar Wallpaper | Dynamic Daily Wallpapers</title>
+  <meta name="description" content="Generate personalized wallpapers that track your year, life progress, or goal countdown. Auto-updates daily via iOS Shortcuts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="hero-content">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4" y="4" width="10" height="10" rx="2" fill="currentColor" opacity="0.3"/>
+              <rect x="15" y="4" width="10" height="10" rx="2" fill="currentColor" opacity="0.5"/>
+              <rect x="26" y="4" width="10" height="10" rx="2" fill="currentColor" opacity="0.7"/>
+              <rect x="4" y="15" width="10" height="10" rx="2" fill="currentColor" opacity="0.5"/>
+              <rect x="15" y="15" width="10" height="10" rx="2" fill="currentColor"/>
+              <rect x="26" y="15" width="10" height="10" rx="2" fill="currentColor" opacity="0.3"/>
+              <rect x="4" y="26" width="10" height="10" rx="2" fill="currentColor" opacity="0.7"/>
+              <rect x="15" y="26" width="10" height="10" rx="2" fill="currentColor" opacity="0.3"/>
+              <rect x="26" y="26" width="10" height="10" rx="2" fill="currentColor" opacity="0.5"/>
+            </svg>
+          </div>
+          <span class="logo-text">Life Calendar</span>
+        </div>
+        <h1>Your Life, <span class="gradient-text">Visualized</span></h1>
+        <p class="tagline">Generate dynamic wallpapers that track your year, life progress, or countdown to your goals. Updated automatically, every single day.</p>
+      </div>
+    </header>
+
+    <!-- Main Configuration -->
+    <main class="config-section">
+      <div class="config-container">
+        <!-- Calendar Type Selector -->
+        <div class="config-card">
+          <h2>Choose Your Calendar</h2>
+          <div class="calendar-types">
+            <button class="calendar-type active" data-type="year">
+              <div class="type-icon">📅</div>
+              <div class="type-info">
+                <span class="type-name">Year Progress</span>
+                <span class="type-desc">Track weeks of the year</span>
+              </div>
+            </button>
+            <button class="calendar-type" data-type="life">
+              <div class="type-icon">⏳</div>
+              <div class="type-info">
+                <span class="type-name">Life Calendar</span>
+                <span class="type-desc">Weeks of your life</span>
+              </div>
+            </button>
+            <button class="calendar-type" data-type="goal">
+              <div class="type-icon">🎯</div>
+              <div class="type-info">
+                <span class="type-name">Goal Countdown</span>
+                <span class="type-desc">Days until your goal</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Country Selector -->
+        <div class="config-card">
+          <h2>Your Location</h2>
+          <p class="config-hint">Used for accurate timezone & date calculations</p>
+          <div class="country-selector">
+            <div class="search-wrapper">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input type="text" id="country-search" placeholder="Search countries..." autocomplete="off">
+            </div>
+            <div class="country-list" id="country-list"></div>
+            <div class="selected-country" id="selected-country">
+              <span class="country-flag">🌍</span>
+              <span class="country-name">Select your country</span>
+              <span class="country-tz"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Life Calendar Options (conditional) -->
+        <div class="config-card life-options hidden" id="life-options">
+          <h2>Life Calendar Settings</h2>
+          <div class="form-group">
+            <label for="dob">Date of Birth</label>
+            <input type="date" id="dob" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="lifespan">Expected Lifespan (years)</label>
+            <input type="number" id="lifespan" class="form-input" value="80" min="50" max="120">
+          </div>
+        </div>
+
+        <!-- Goal Options (conditional) -->
+        <div class="config-card goal-options hidden" id="goal-options">
+          <h2>Goal Settings</h2>
+          <div class="form-group">
+            <label for="goal-name">Goal Name</label>
+            <input type="text" id="goal-name" class="form-input" placeholder="e.g., Product Launch">
+          </div>
+          <div class="form-group">
+            <label for="goal-date">Target Date</label>
+            <input type="date" id="goal-date" class="form-input">
+          </div>
+        </div>
+
+        <!-- Color Configuration -->
+        <div class="config-card">
+          <h2>Customize Colors</h2>
+          <div class="color-pickers">
+            <div class="color-picker-group">
+              <label>Background</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="bg-color" value="#111114">
+                <span class="color-value" id="bg-value">#111114</span>
+              </div>
+              <div class="color-presets" data-target="bg-color">
+                <button class="preset" style="background: #111114" data-color="#111114"></button>
+                <button class="preset" style="background: #1a1a2e" data-color="#1a1a2e"></button>
+                <button class="preset" style="background: #0f0f23" data-color="#0f0f23"></button>
+                <button class="preset" style="background: #16213e" data-color="#16213e"></button>
+                <button class="preset" style="background: #1b1b1b" data-color="#1b1b1b"></button>
+              </div>
+            </div>
+            <div class="color-picker-group">
+              <label>Accent Color</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="accent-color" value="#FFD700">
+                <span class="color-value" id="accent-value">#FFD700</span>
+              </div>
+              <div class="color-presets" data-target="accent-color">
+                <button class="preset" style="background: #FFD700" data-color="#FFD700"></button>
+                <button class="preset" style="background: #00D9FF" data-color="#00D9FF"></button>
+                <button class="preset" style="background: #FF6B6B" data-color="#FF6B6B"></button>
+                <button class="preset" style="background: #4ECDC4" data-color="#4ECDC4"></button>
+                <button class="preset" style="background: #A855F7" data-color="#A855F7"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Device Selector -->
+        <div class="config-card">
+          <h2>Device Resolution</h2>
+          <div class="device-selector">
+            <select id="device-select" class="form-select">
+              <optgroup label="iPhone">
+                <option value="1290x2796">iPhone 15 Pro Max</option>
+                <option value="1179x2556" selected>iPhone 15 Pro / 15</option>
+                <option value="1284x2778">iPhone 14 Plus / 13 Pro Max</option>
+                <option value="1170x2532">iPhone 14 / 13 / 12</option>
+                <option value="750x1334">iPhone SE (3rd gen)</option>
+              </optgroup>
+              <optgroup label="Android">
+                <option value="1440x3120">Samsung Galaxy S24 Ultra</option>
+                <option value="1080x2340">Samsung Galaxy S24</option>
+                <option value="1344x2992">Google Pixel 8 Pro</option>
+                <option value="1080x2400">Google Pixel 8</option>
+              </optgroup>
+              <optgroup label="iPad">
+                <option value="2048x2732">iPad Pro 12.9"</option>
+                <option value="1668x2388">iPad Pro 11"</option>
+              </optgroup>
+              <optgroup label="Custom">
+                <option value="custom">Custom Size</option>
+              </optgroup>
+            </select>
+            <div class="custom-size hidden" id="custom-size">
+              <input type="number" id="custom-width" class="form-input" placeholder="Width">
+              <span>×</span>
+              <input type="number" id="custom-height" class="form-input" placeholder="Height">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview & URL Section -->
+      <div class="output-section">
+        <div class="preview-container">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="preview-screen" id="preview">
+              <div class="preview-placeholder">
+                <span>Configure options to see preview</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="url-section">
+          <h3>Your Wallpaper URL</h3>
+          <div class="url-box">
+            <input type="text" id="generated-url" readonly placeholder="Configure options to generate URL">
+            <button class="copy-btn" id="copy-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Copy</span>
+            </button>
+          </div>
+          <p class="url-hint">Use this URL in your iOS Shortcut or automation app</p>
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="setup-instructions">
+          <h3>📱 iOS Shortcut Setup</h3>
+          <ol>
+            <li>Copy the URL above</li>
+            <li>Open the <strong>Shortcuts</strong> app on your iPhone</li>
+            <li>Create a new shortcut with these actions:
+              <ul>
+                <li><code>Get Contents of URL</code> → paste your URL</li>
+                <li><code>Set Wallpaper</code> → choose Lock Screen</li>
+              </ul>
+            </li>
+            <li>Set up <strong>Automation</strong> to run daily at 6:00 AM</li>
+          </ol>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Made with ❤️ for mindful living</p>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
