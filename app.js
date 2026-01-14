@@ -1,323 +1,335 @@
-import { countries, getTimezone } from './data/countries.js';
-import { devices } from './data/devices.js';
+/**
+ * LifeGrid - Frontend Application
+ * Apple-inspired dynamic wallpaper generator
+ */
+
+import { countries } from './data/countries.js';
+import { devices, getDevice } from './data/devices.js';
+
+// ===== Configuration =====
+const WORKER_URL = 'https://lifegrid.your-worker.workers.dev';
 
 // ===== State =====
 const state = {
-    calendarType: 'year',
+    selectedType: null,
     country: null,
     timezone: null,
-    bgColor: '#111114',
-    accentColor: '#FFD700',
+    bgColor: '#000000',
+    accentColor: '#FFFFFF',
     width: 1179,
     height: 2556,
+    clockHeight: 0.18,  // Space for iPhone clock/date
     dob: null,
     lifespan: 80,
     goalName: 'Goal',
-    goalDate: null
+    goalDate: null,
+    selectedDevice: null
 };
-
-// Backend URL - update this when deploying
-const WORKER_URL = 'https://life-calendar.your-worker.workers.dev';
 
 // ===== DOM Elements =====
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
 const elements = {
-    calendarTypes: document.querySelectorAll('.calendar-type'),
-    countrySearch: document.getElementById('country-search'),
-    countryList: document.getElementById('country-list'),
-    selectedCountry: document.getElementById('selected-country'),
-    lifeOptions: document.getElementById('life-options'),
-    goalOptions: document.getElementById('goal-options'),
-    bgColor: document.getElementById('bg-color'),
-    bgValue: document.getElementById('bg-value'),
-    accentColor: document.getElementById('accent-color'),
-    accentValue: document.getElementById('accent-value'),
-    deviceSelect: document.getElementById('device-select'),
-    customSize: document.getElementById('custom-size'),
-    customWidth: document.getElementById('custom-width'),
-    customHeight: document.getElementById('custom-height'),
-    dob: document.getElementById('dob'),
-    lifespan: document.getElementById('lifespan'),
-    goalName: document.getElementById('goal-name'),
-    goalDate: document.getElementById('goal-date'),
-    preview: document.getElementById('preview'),
-    generatedUrl: document.getElementById('generated-url'),
-    copyBtn: document.getElementById('copy-btn')
+    typeCards: $$('.type-card'),
+    selectedTypeIndicator: $('#selected-type .indicator-value'),
+    countrySelect: $('#country-select'),
+    deviceSelect: $('#device-select'),
+    deviceResolution: $('#device-resolution'),
+    bgColor: $('#bg-color'),
+    bgHex: $('#bg-hex'),
+    accentColor: $('#accent-color'),
+    accentHex: $('#accent-hex'),
+    presetBtns: $$('.preset-btn'),
+    dobInput: $('#dob-input'),
+    lifespanInput: $('#lifespan-input'),
+    goalNameInput: $('#goal-name-input'),
+    goalDateInput: $('#goal-date-input'),
+    lifeConfig: $('#life-config'),
+    goalConfig: $('#goal-config'),
+    previewScreen: $('#preview-screen'),
+    generatedUrl: $('#generated-url'),
+    copyBtn: $('#copy-btn'),
+    yearDay: $('#year-day'),
+    yearWeek: $('#year-week'),
+    yearPercent: $('#year-percent')
 };
 
-// ===== Country Selector =====
-function initCountrySelector() {
-    // Populate country list
-    renderCountryList(countries);
-
-    // Search functionality
-    elements.countrySearch.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
-        const filtered = countries.filter(c =>
-            c.name.toLowerCase().includes(query) ||
-            c.code.toLowerCase().includes(query)
-        );
-        renderCountryList(filtered);
-    });
-
-    // Show/hide dropdown
-    elements.countrySearch.addEventListener('focus', () => {
-        elements.countryList.classList.add('open');
-    });
-
-    elements.countrySearch.addEventListener('blur', () => {
-        // Delay to allow click on item
-        setTimeout(() => {
-            elements.countryList.classList.remove('open');
-        }, 200);
-    });
-
-    // Try to auto-detect country
+// ===== Initialize =====
+function init() {
+    populateCountries();
+    populateDevices();
+    populateCardPreviews();
+    updateYearStats();
+    bindEvents();
     autoDetectCountry();
 }
 
-function renderCountryList(countryData) {
-    elements.countryList.innerHTML = countryData.map(country => `
-    <div class="country-item" data-code="${country.code}">
-      <span class="flag">${getFlagEmoji(country.code)}</span>
-      <span class="name">${country.name}</span>
-      <span class="tz">${country.timezone}</span>
-    </div>
-  `).join('');
-
-    // Add click handlers
-    elements.countryList.querySelectorAll('.country-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const code = item.dataset.code;
-            selectCountry(code);
-        });
+// ===== Populate Countries =====
+function populateCountries() {
+    countries.forEach(country => {
+        const option = document.createElement('option');
+        option.value = country.code;
+        option.textContent = `${getFlagEmoji(country.code)} ${country.name}`;
+        elements.countrySelect.appendChild(option);
     });
 }
 
-function selectCountry(code) {
-    const country = countries.find(c => c.code === code);
-    if (!country) return;
-
-    state.country = code;
-    state.timezone = country.timezone;
-
-    // Update UI
-    elements.selectedCountry.innerHTML = `
-    <span class="country-flag">${getFlagEmoji(code)}</span>
-    <span class="country-name">${country.name}</span>
-    <span class="country-tz">${country.timezone}</span>
-  `;
-
-    elements.countrySearch.value = '';
-    elements.countryList.classList.remove('open');
-
-    updateURL();
-}
-
-function getFlagEmoji(countryCode) {
-    const codePoints = countryCode
-        .toUpperCase()
-        .split('')
-        .map(char => 127397 + char.charCodeAt());
+function getFlagEmoji(code) {
+    const codePoints = code.toUpperCase().split('').map(c => 127397 + c.charCodeAt());
     return String.fromCodePoint(...codePoints);
 }
 
-async function autoDetectCountry() {
+// ===== Populate Devices =====
+function populateDevices() {
+    // Group devices by category
+    const categories = {};
+    devices.forEach(device => {
+        if (!categories[device.category]) {
+            categories[device.category] = [];
+        }
+        categories[device.category].push(device);
+    });
+
+    // Create optgroups
+    Object.entries(categories).forEach(([category, deviceList]) => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = category;
+
+        deviceList.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.name;
+            option.textContent = device.name;
+            option.dataset.width = device.width;
+            option.dataset.height = device.height;
+            option.dataset.clockHeight = device.clockHeight;
+            optgroup.appendChild(option);
+        });
+
+        elements.deviceSelect.appendChild(optgroup);
+    });
+
+    // Set default (iPhone 16 Pro)
+    const defaultDevice = devices.find(d => d.name === 'iPhone 16 Pro') || devices[0];
+    elements.deviceSelect.value = defaultDevice.name;
+    selectDevice(defaultDevice.name);
+}
+
+// ===== Card Previews =====
+function populateCardPreviews() {
+    // Year Grid Preview - 15 columns now
+    const yearGrid = $('.year-grid-preview');
+    yearGrid.innerHTML = '';
+    const dayOfYear = getDayOfYear();
+    for (let i = 0; i < 45; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (i < Math.floor(dayOfYear / 8) ? ' filled' : '');
+        yearGrid.appendChild(cell);
+    }
+
+    // Life Grid Preview
+    const lifeGrid = $('.life-grid-preview');
+    lifeGrid.innerHTML = '';
+    for (let i = 0; i < 65; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i < 25 ? ' filled' : '');
+        lifeGrid.appendChild(dot);
+    }
+}
+
+function updateYearStats() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    const weekOfYear = Math.ceil(dayOfYear / 7);
+    const totalDays = isLeapYear(now.getFullYear()) ? 366 : 365;
+    const percent = Math.round((dayOfYear / totalDays) * 100);
+
+    elements.yearDay.textContent = dayOfYear;
+    elements.yearWeek.textContent = weekOfYear;
+    elements.yearPercent.textContent = percent + '%';
+}
+
+function getDayOfYear() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+}
+
+function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+}
+
+// ===== Auto-detect Country =====
+function autoDetectCountry() {
     try {
-        // Use timezone to guess country
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const country = countries.find(c => c.timezone === tz);
         if (country) {
-            selectCountry(country.code);
+            elements.countrySelect.value = country.code;
+            state.country = country.code;
+            state.timezone = country.timezone;
         }
     } catch (e) {
         console.log('Could not auto-detect country');
     }
 }
 
-// ===== Calendar Type Selector =====
-function initCalendarTypes() {
-    elements.calendarTypes.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Update active state
-            elements.calendarTypes.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Update state
-            state.calendarType = btn.dataset.type;
-
-            // Show/hide conditional options
-            elements.lifeOptions.classList.toggle('hidden', state.calendarType !== 'life');
-            elements.goalOptions.classList.toggle('hidden', state.calendarType !== 'goal');
-
-            updateURL();
-        });
-    });
-}
-
-// ===== Color Pickers =====
-function initColorPickers() {
-    // Background color
-    elements.bgColor.addEventListener('input', (e) => {
-        state.bgColor = e.target.value;
-        elements.bgValue.textContent = e.target.value;
-        updateURL();
-        updatePreview();
+// ===== Event Bindings =====
+function bindEvents() {
+    // Type Card Selection
+    elements.typeCards.forEach(card => {
+        card.addEventListener('click', () => selectType(card.dataset.type));
     });
 
-    // Accent color
-    elements.accentColor.addEventListener('input', (e) => {
-        state.accentColor = e.target.value;
-        elements.accentValue.textContent = e.target.value;
-        updateURL();
-        updatePreview();
-    });
-
-    // Color presets
-    document.querySelectorAll('.color-presets').forEach(presetGroup => {
-        const target = presetGroup.dataset.target;
-        presetGroup.querySelectorAll('.preset').forEach(preset => {
-            preset.addEventListener('click', () => {
-                const color = preset.dataset.color;
-                const input = document.getElementById(target);
-                const valueDisplay = document.getElementById(target.replace('color', 'value'));
-
-                input.value = color;
-                valueDisplay.textContent = color;
-
-                if (target === 'bg-color') {
-                    state.bgColor = color;
-                } else {
-                    state.accentColor = color;
-                }
-
-                updateURL();
-                updatePreview();
-            });
-        });
-    });
-}
-
-// ===== Device Selector =====
-function initDeviceSelector() {
-    elements.deviceSelect.addEventListener('change', (e) => {
-        const value = e.target.value;
-
-        if (value === 'custom') {
-            elements.customSize.classList.remove('hidden');
-        } else {
-            elements.customSize.classList.add('hidden');
-            const [width, height] = value.split('x').map(Number);
-            state.width = width;
-            state.height = height;
+    // Country Select
+    elements.countrySelect.addEventListener('change', (e) => {
+        const country = countries.find(c => c.code === e.target.value);
+        if (country) {
+            state.country = country.code;
+            state.timezone = country.timezone;
             updateURL();
         }
     });
 
-    elements.customWidth.addEventListener('input', (e) => {
-        state.width = parseInt(e.target.value) || 1179;
+    // Device Select
+    elements.deviceSelect.addEventListener('change', (e) => {
+        selectDevice(e.target.value);
+    });
+
+    // Color Pickers
+    elements.bgColor.addEventListener('input', (e) => {
+        state.bgColor = e.target.value;
+        elements.bgHex.textContent = e.target.value.toUpperCase();
+        updatePreview();
         updateURL();
     });
 
-    elements.customHeight.addEventListener('input', (e) => {
-        state.height = parseInt(e.target.value) || 2556;
+    elements.accentColor.addEventListener('input', (e) => {
+        state.accentColor = e.target.value;
+        elements.accentHex.textContent = e.target.value.toUpperCase();
+        updatePreview();
         updateURL();
     });
-}
 
-// ===== Life Calendar Options =====
-function initLifeOptions() {
-    elements.dob.addEventListener('change', (e) => {
+    // Color Presets
+    elements.presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const bg = btn.dataset.bg;
+            const accent = btn.dataset.accent;
+
+            state.bgColor = bg;
+            state.accentColor = accent;
+
+            elements.bgColor.value = bg;
+            elements.bgHex.textContent = bg.toUpperCase();
+            elements.accentColor.value = accent;
+            elements.accentHex.textContent = accent.toUpperCase();
+
+            updatePreview();
+            updateURL();
+        });
+    });
+
+    // Life Calendar Inputs
+    elements.dobInput?.addEventListener('change', (e) => {
         state.dob = e.target.value;
+        updatePreview();
         updateURL();
     });
 
-    elements.lifespan.addEventListener('input', (e) => {
+    elements.lifespanInput?.addEventListener('input', (e) => {
         state.lifespan = parseInt(e.target.value) || 80;
         updateURL();
     });
-}
 
-// ===== Goal Options =====
-function initGoalOptions() {
-    elements.goalName.addEventListener('input', (e) => {
+    // Goal Inputs
+    elements.goalNameInput?.addEventListener('input', (e) => {
         state.goalName = e.target.value || 'Goal';
+        updatePreview();
         updateURL();
     });
 
-    elements.goalDate.addEventListener('change', (e) => {
+    elements.goalDateInput?.addEventListener('change', (e) => {
         state.goalDate = e.target.value;
+        updatePreview();
         updateURL();
     });
+
+    // Copy Button
+    elements.copyBtn.addEventListener('click', copyURL);
 }
 
-// ===== URL Builder =====
-function updateURL() {
-    if (!state.country) {
-        elements.generatedUrl.value = 'Please select a country first';
-        return;
-    }
+// ===== Device Selection =====
+function selectDevice(deviceName) {
+    const device = devices.find(d => d.name === deviceName);
+    if (!device) return;
 
-    // Build params
-    const params = new URLSearchParams();
-    params.set('country', state.country.toLowerCase());
-    params.set('type', state.calendarType);
-    params.set('bg', state.bgColor.replace('#', ''));
-    params.set('accent', state.accentColor.replace('#', ''));
-    params.set('width', state.width);
-    params.set('height', state.height);
+    state.selectedDevice = device;
+    state.width = device.width;
+    state.height = device.height;
+    state.clockHeight = device.clockHeight || 0.18;
 
-    // Add conditional params
-    if (state.calendarType === 'life') {
-        if (state.dob) params.set('dob', state.dob);
-        params.set('lifespan', state.lifespan);
-    }
-
-    if (state.calendarType === 'goal') {
-        if (state.goalDate) params.set('goal', state.goalDate);
-        if (state.goalName) params.set('goalName', encodeURIComponent(state.goalName));
-    }
-
-    const url = `${WORKER_URL}/generate?${params.toString()}`;
-    elements.generatedUrl.value = url;
+    // Update resolution hint
+    elements.deviceResolution.textContent = `${device.width} × ${device.height}`;
 
     updatePreview();
+    updateURL();
 }
 
-// ===== Copy Button =====
-function initCopyButton() {
-    elements.copyBtn.addEventListener('click', async () => {
-        const url = elements.generatedUrl.value;
-        if (!url || url.startsWith('Please')) return;
+// ===== Type Selection =====
+function selectType(type) {
+    state.selectedType = type;
 
-        try {
-            await navigator.clipboard.writeText(url);
-            const btnText = elements.copyBtn.querySelector('span');
-            btnText.textContent = 'Copied!';
-            setTimeout(() => {
-                btnText.textContent = 'Copy';
-            }, 2000);
-        } catch (e) {
-            console.error('Failed to copy:', e);
-        }
+    // Update card states
+    elements.typeCards.forEach(card => {
+        card.classList.toggle('selected', card.dataset.type === type);
     });
+
+    // Update indicator
+    const typeNames = { year: 'Year Progress', life: 'Life Calendar', goal: 'Goal Countdown' };
+    elements.selectedTypeIndicator.textContent = typeNames[type];
+
+    // Show/hide conditional config
+    elements.lifeConfig?.classList.toggle('hidden', type !== 'life');
+    elements.goalConfig?.classList.toggle('hidden', type !== 'goal');
+
+    // Scroll to customize section
+    $('#customize').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    updatePreview();
+    updateURL();
 }
 
 // ===== Preview Generator =====
 function updatePreview() {
+    if (!state.selectedType) {
+        elements.previewScreen.innerHTML = '<div class="preview-placeholder"><span>Select a wallpaper type</span></div>';
+        return;
+    }
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // Use scaled down size for preview
-    const scale = 0.15;
+    // Preview dimensions - higher scale for better quality
+    const scale = 0.8;
     canvas.width = state.width * scale;
     canvas.height = state.height * scale;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.objectFit = 'contain';
+    canvas.style.borderRadius = '24px';
+
 
     // Background
     ctx.fillStyle = state.bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw calendar preview based on type
-    switch (state.calendarType) {
+    switch (state.selectedType) {
         case 'year':
             drawYearPreview(ctx, canvas.width, canvas.height);
             break;
@@ -329,52 +341,106 @@ function updatePreview() {
             break;
     }
 
-    // Clear and add canvas to preview
-    elements.preview.innerHTML = '';
-    elements.preview.appendChild(canvas);
+    elements.previewScreen.innerHTML = '';
+    elements.previewScreen.appendChild(canvas);
 }
 
 function drawYearPreview(ctx, width, height) {
-    const cols = 7;
-    const rows = Math.ceil(365 / cols);
-    const padding = width * 0.1;
-    const gap = 3;
-    const cellSize = (width - padding * 2 - gap * (cols - 1)) / cols;
+    const cols = 15;
+    const totalDays = isLeapYear(new Date().getFullYear()) ? 366 : 365;
+    const rows = Math.ceil(totalDays / cols);
 
-    const startY = height * 0.35;
+    // Leave space for clock at top (increased margin)
+    // Extra clearance for clock
+    const clockSpace = height * (state.clockHeight + 0.05);
+    const padding = width * 0.20;  // 20% horizontal padding
+    const statsHeight = height * 0.05;
+    const bottomMargin = height * 0.05;
 
-    // Calculate current day of year
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 0);
-    const diff = now - startOfYear;
-    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const availableWidth = width - (padding * 2);
+    // Constrain height to avoid grid becoming too tall
+    const availableHeight = height - clockSpace - statsHeight - bottomMargin;
 
-    for (let i = 0; i < 365; i++) {
+    // Tighter gap
+    const gap = Math.max(2, width * 0.008);
+    const cellWidth = (availableWidth - (gap * (cols - 1))) / cols;
+
+    // Ensure cells don't get too big vertically if there's excess height
+    const cellHeight = cellWidth; // Keep it square based on width constraint
+    const cellSize = cellWidth;
+    const dotRadius = (cellSize / 2) * 0.85;
+
+    const gridWidth = (cellSize * cols) + (gap * (cols - 1));
+    const gridHeight = (cellSize * rows) + (gap * (rows - 1));
+
+    const startX = (width - gridWidth) / 2;
+    // Push down slightly more to ensure clock clearance
+    const startY = clockSpace + (height * 0.02);
+
+    const dayOfYear = getDayOfYear();
+
+    // Draw dots grid
+    for (let i = 0; i < totalDays; i++) {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const x = padding + col * (cellSize + gap);
-        const y = startY + row * (cellSize + gap);
+        const cx = startX + col * (cellSize + gap) + cellSize / 2;
+        const cy = startY + row * (cellSize + gap) + cellSize / 2;
 
-        ctx.fillStyle = i < dayOfYear ? state.accentColor : 'rgba(255, 255, 255, 0.1)';
-        ctx.beginPath();
-        ctx.roundRect(x, y, cellSize, cellSize, 1);
-        ctx.fill();
+        const isCompleted = i < dayOfYear;
+        const isToday = i === dayOfYear - 1;
+
+        if (isToday) {
+            ctx.fillStyle = state.accentColor;
+            ctx.beginPath();
+            ctx.arc(cx, cy, dotRadius * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (isCompleted) {
+            ctx.fillStyle = hexToRgba(state.accentColor, 0.75);
+            ctx.beginPath();
+            ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
+
+    // Stats just below the grid with padding
+    const daysLeft = totalDays - dayOfYear;
+    const percent = Math.round((dayOfYear / totalDays) * 100);
+    const statsY = startY + gridHeight + (height * 0.03);
+
+    // Grey color like the dots (rgba 255,255,255,0.5)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    // Monospace font
+    ctx.font = `500 ${width * 0.026}px "SF Mono", "Menlo", "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`${daysLeft} days left · ${percent}% complete`, width / 2, statsY);
 }
 
 function drawLifePreview(ctx, width, height) {
-    const cols = 52; // weeks per year
-    const rows = state.lifespan;
-    const padding = width * 0.05;
-    const gap = 1;
+    const cols = 52;
+    const lifespan = state.lifespan || 80;
+    const rows = lifespan;
+
+    // Leave space for clock at top
+    const clockSpace = height * state.clockHeight;
+    const padding = width * 0.04;
+    const statsHeight = height * 0.06;
+
+    const availableWidth = width - (padding * 2);
+    const availableHeight = height - clockSpace - statsHeight - (height * 0.05);
+
+    const gap = Math.max(1.5, width * 0.003);
     const cellSize = Math.min(
-        (width - padding * 2 - gap * (cols - 1)) / cols,
-        (height * 0.6 - gap * (rows - 1)) / rows
+        (availableWidth - (gap * (cols - 1))) / cols,
+        (availableHeight - (gap * (rows - 1))) / rows
     );
+    const radius = cellSize / 2 - 0.5;
 
-    const startY = height * 0.2;
-
-    // Calculate weeks lived (simplified for preview)
+    // Calculate weeks lived
     let weeksLived = 0;
     if (state.dob) {
         const dob = new Date(state.dob);
@@ -383,77 +449,162 @@ function drawLifePreview(ctx, width, height) {
         weeksLived = Math.floor((now - dob) / msPerWeek);
     }
 
-    const totalWeeks = rows * cols;
+    const gridWidth = (cellSize * cols) + (gap * (cols - 1));
+    const gridHeight = (cellSize * rows) + (gap * (rows - 1));
+    const startX = (width - gridWidth) / 2;
+    const startY = clockSpace;
 
-    for (let i = 0; i < Math.min(totalWeeks, 2000); i++) {
+    // Dots
+    const totalWeeks = rows * cols;
+    for (let i = 0; i < totalWeeks; i++) {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const x = padding + col * (cellSize + gap);
-        const y = startY + row * (cellSize + gap);
+        const cx = startX + col * (cellSize + gap) + cellSize / 2;
+        const cy = startY + row * (cellSize + gap) + cellSize / 2;
 
-        ctx.fillStyle = i < weeksLived ? state.accentColor : 'rgba(255, 255, 255, 0.05)';
+        const isLived = i < weeksLived;
+        const isCurrentWeek = i === weeksLived;
+
+        if (isCurrentWeek) {
+            ctx.fillStyle = state.accentColor;
+        } else if (isLived) {
+            ctx.fillStyle = hexToRgba(state.accentColor, 0.75);
+        } else {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+        }
+
         ctx.beginPath();
-        ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2 - 0.5, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fill();
     }
+
+    // Stats just below grid with padding
+    const weeksLeft = totalWeeks - weeksLived;
+    const percent = Math.round((weeksLived / totalWeeks) * 100);
+    const statsY = startY + gridHeight + (height * 0.035);
+
+    // Grey color like the dots (rgba 255,255,255,0.5)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    // Monospace font
+    ctx.font = `500 ${width * 0.024}px "SF Mono", "Menlo", "Courier New", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`${weeksLeft.toLocaleString()} weeks left · ${percent}% lived`, width / 2, statsY);
 }
 
 function drawGoalPreview(ctx, width, height) {
+    // Leave space for clock
+    const clockSpace = height * state.clockHeight;
     const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = width * 0.3;
+    const centerY = clockSpace + (height - clockSpace) * 0.4;
+    const radius = width * 0.25;
 
     // Calculate days remaining
-    let progress = 0;
     let daysRemaining = 0;
+    let progress = 0;
     if (state.goalDate) {
         const goal = new Date(state.goalDate);
         const now = new Date();
-        const total = 365; // Assume 1 year goal for simplicity
         daysRemaining = Math.max(0, Math.ceil((goal - now) / (1000 * 60 * 60 * 24)));
-        progress = Math.max(0, Math.min(1, 1 - (daysRemaining / total)));
+        progress = Math.min(1, 1 - (daysRemaining / 365));
     }
 
     // Background circle
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
     ctx.stroke();
 
     // Progress arc
-    ctx.strokeStyle = state.accentColor;
-    ctx.lineWidth = 8;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
-    ctx.stroke();
+    if (progress > 0) {
+        ctx.strokeStyle = state.accentColor;
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
+        ctx.stroke();
+    }
 
-    // Days remaining text
+    // Days number
     ctx.fillStyle = state.accentColor;
-    ctx.font = `bold ${width * 0.12}px Inter, sans-serif`;
+    ctx.font = `bold ${width * 0.14}px Inter, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(daysRemaining.toString(), centerX, centerY - 5);
+    ctx.fillText(daysRemaining.toString(), centerX, centerY - 4);
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.font = `${width * 0.04}px Inter, sans-serif`;
-    ctx.fillText('days left', centerX, centerY + 15);
+    // Label
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = `${width * 0.03}px Inter, sans-serif`;
+    ctx.fillText(daysRemaining === 1 ? 'day left' : 'days left', centerX, centerY + (height * 0.08));
+
+
+    // Goal name
+    if (state.goalName) {
+        ctx.fillStyle = state.accentColor;
+        ctx.font = `600 ${width * 0.035}px Inter, sans-serif`;
+        ctx.fillText(state.goalName, centerX, height * 0.75);
+    }
+
+    // Progress percentage
+    // const percent = Math.round(progress * 100);
+    // ctx.fillStyle = hexToRgba(state.accentColor, 0.6);
+    // ctx.font = `500 ${width * 0.025}px Inter, sans-serif`;
+    // ctx.fillText(`${percent}% complete`, centerX, height * 0.82);
 }
 
-// ===== Initialize =====
-function init() {
-    initCountrySelector();
-    initCalendarTypes();
-    initColorPickers();
-    initDeviceSelector();
-    initLifeOptions();
-    initGoalOptions();
-    initCopyButton();
-
-    // Initial preview
-    updatePreview();
+function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Start app
+// ===== URL Builder =====
+function updateURL() {
+    if (!state.selectedType || !state.country) {
+        elements.generatedUrl.value = 'Select a wallpaper type and country...';
+        return;
+    }
+
+    const params = new URLSearchParams();
+    params.set('country', state.country.toLowerCase());
+    params.set('type', state.selectedType);
+    params.set('bg', state.bgColor.replace('#', ''));
+    params.set('accent', state.accentColor.replace('#', ''));
+    params.set('width', state.width);
+    params.set('height', state.height);
+    params.set('clockHeight', state.clockHeight);  // Pass clock height for proper spacing
+
+    if (state.selectedType === 'life') {
+        if (state.dob) params.set('dob', state.dob);
+        params.set('lifespan', state.lifespan);
+    }
+
+    if (state.selectedType === 'goal') {
+        if (state.goalDate) params.set('goal', state.goalDate);
+        if (state.goalName) params.set('goalName', encodeURIComponent(state.goalName));
+    }
+
+    const url = `${WORKER_URL}/generate?${params.toString()}`;
+    elements.generatedUrl.value = url;
+}
+
+// ===== Copy URL =====
+async function copyURL() {
+    const url = elements.generatedUrl.value;
+    if (!url || url.includes('Select a')) return;
+
+    try {
+        await navigator.clipboard.writeText(url);
+        const btnSpan = elements.copyBtn.querySelector('span');
+        btnSpan.textContent = 'Copied!';
+        setTimeout(() => {
+            btnSpan.textContent = 'Copy';
+        }, 2000);
+    } catch (e) {
+        console.error('Failed to copy:', e);
+    }
+}
+
+// ===== Start =====
 init();
