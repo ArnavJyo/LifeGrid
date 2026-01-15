@@ -7,7 +7,7 @@ import { countries } from './data/countries.js';
 import { devices, getDevice } from './data/devices.js';
 
 // ===== Configuration =====
-const WORKER_URL = 'https://lifegrid.your-worker.workers.dev';
+const WORKER_URL = 'https://lifegrid.aradhyaxstudy.workers.dev';
 
 // ===== State =====
 const state = {
