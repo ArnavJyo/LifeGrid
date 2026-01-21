@@ -63,6 +63,8 @@ function init() {
     updateYearStats();
     bindEvents();
     autoDetectCountry();
+    // Default to iOS
+    switchSetupPlatform('ios');
 }
 
 // ===== Populate Countries =====
@@ -271,6 +273,34 @@ function bindEvents() {
 
     // Copy Button
     elements.copyBtn.addEventListener('click', copyURL);
+
+    // Sidebar Items
+    const setupItems = $$('.setup-sidebar-item');
+    setupItems.forEach(item => {
+        item.addEventListener('click', () => {
+            switchSetupPlatform(item.dataset.platform);
+        });
+    });
+}
+
+// ===== Setup Switching =====
+function switchSetupPlatform(platform) {
+    // Update Sidebar
+    const items = $$('.setup-sidebar-item');
+    items.forEach(i => {
+        i.classList.toggle('active', i.dataset.platform === platform);
+    });
+
+    // Update Content
+    const wrappers = $$('.setup-content-wrapper');
+    wrappers.forEach(w => {
+        w.classList.remove('active');
+        if (w.id === `setup-${platform}`) {
+            // Small timeout to allow display:block to apply before animation if needed
+            // But CSS animation handles it on class add
+            w.classList.add('active');
+        }
+    });
 }
 
 // ===== Device Selection =====
