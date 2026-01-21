@@ -24,3 +24,5 @@ yarn-error.log*
 # IDE settings (Optional)
 .vscode/
 .idea/
+
+internal_docs/
