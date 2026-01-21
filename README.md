@@ -1,8 +1,8 @@
 # LifeGrid
 
-**Premium Dynamic Wallpapers for iOS Lock Screens.**
+**Premium Dynamic Wallpapers for iOS and Android Lock Screens.**
 
-LifeGrid generates high-resolution, data-driven wallpapers that help you visualize your time, goals, and life progress directly on your iPhone lock screen. Designed to sit perfectly between the time, widgets, and dynamic island.
+LifeGrid generates high-resolution, data-driven wallpapers that help you visualize your time, goals, and life progress directly on your iPhone or Android lock screen. Designed to sit perfectly between the time, widgets, and dynamic island.
 
 ## Tech Stack
 
@@ -143,6 +143,22 @@ GET /generate?country=us&type=year&bg=000000&accent=FFFFFF&width=1179&height=255
    - `Get Contents of URL` → paste URL
    - `Set Wallpaper` → Lock Screen
 4. Automate to run daily at 6 AM
+
+## 📱 Android Setup
+
+1. **Copy URL**: Configure your wallpaper above and copy the generated URL
+2. **Prerequisites**: Install **MacroDroid** from Google Play Store.
+3. **Setup Macro**: Trigger: Date/Time → Day/Time (00:01:00) → Active all weekdays
+4. **Configure Actions**:
+   - **4.1 Download Image**<br>
+     Web Interactions → HTTP Request (GET)<br>
+     Paste URL. Enable "Block next actions"<br>
+     Tick "Save response" → `/Download/lifegrid.png`
+   - **4.2 Set Wallpaper**<br>
+     Device Settings → Set Wallpaper<br>
+     Select `/Download/lifegrid.png`<br>
+     ⚠️ **Use exact same filename**
+5. **Finalize**: Give macro a name → Tap **Create Macro**
 
 
 ## Contribution
