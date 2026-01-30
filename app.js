@@ -255,6 +255,7 @@ function bindEvents() {
 
     elements.lifespanInput?.addEventListener('input', (e) => {
         state.lifespan = parseInt(e.target.value) || 80;
+        updatePreview();
         updateURL();
     });
 
