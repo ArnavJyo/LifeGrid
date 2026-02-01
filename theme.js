@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedTheme === 'light') {
     body.classList.add('light-mode');
     themeIcon.innerHTML = sunContent;
+  } else {
+    // Ensure the dark mode icon is explicitly set for non-light or unset themes
+    themeIcon.innerHTML = moonContent;
   }
 
   // 2. Toggle Event Listener
