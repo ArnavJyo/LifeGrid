@@ -632,7 +632,7 @@ function drawGoalPreview(ctx, width, height) {
         // Total days from start to goal
         const totalDays = Math.max(1, Math.ceil((goal - startDate) / (1000 * 60 * 60 * 24)));
         // Progress represents REMAINING time - arc decreases as time passes toward goal
-        progress = Math.min(1, Math.max(0, daysRemaining / totalDays));
+        progress = Math.min(0.9999, Math.max(0, daysRemaining / totalDays));
     }
 
     // Background circle

@@ -52,7 +52,7 @@ export function generateGoalCountdown(options) {
     // Progress represents REMAINING time - arc decreases as time passes
     // Clamp slightly below 1 to avoid unreliable full 360° SVG arcs
     const rawProgress = daysRemaining / totalDays;
-    const progress = Math.min(0.9999, Math.max(0, rawProgress));
+    const progress = Math.max(0, Math.min(1, rawProgress));
 
     // Leave space for clock (with extra padding)
     const clockSpace = height * (clockHeight + 0.05);
