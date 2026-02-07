@@ -121,8 +121,10 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  column-gap: var(--space-6);
+  position: relative;
 }
 
 .nav-logo {
@@ -149,6 +151,9 @@ body {
   gap: var(--space-6);
   align-items: center;
   justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .nav-github {
@@ -190,6 +195,7 @@ body {
   display: flex;
   flex-direction: row;
   gap: var(--space-4);
+  align-items: center;
 }
 .nav-btn {
   background: var(--bg-elevated);
@@ -207,6 +213,56 @@ body {
   -moz-appearance: none;
   background-image: none;
   padding-right: var(--space-3);
+}
+
+.lang-switch {
+  position: relative;
+}
+
+.lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 180px;
+  padding: var(--space-2);
+  background: var(--gray-950);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  display: none;
+  flex-direction: column;
+  gap: var(--space-1);
+  z-index: 200;
+}
+
+.lang-menu.is-open {
+  display: flex;
+}
+
+.lang-option {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: var(--font-sans);
+}
+
+.lang-option:hover,
+.lang-option[aria-selected="true"] {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-strong);
 }
 
 /* === Hero Section === */
