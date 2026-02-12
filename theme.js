@@ -28,10 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'light') {
     body.classList.add('light-mode');
-    themeIcon.innerHTML = sunContent;
+    themeIcon.innerHTML = moonContent;
   } else {
     // Ensure the dark mode icon is explicitly set for non-light or unset themes
-    themeIcon.innerHTML = moonContent;
+    themeIcon.innerHTML = sunContent;
   }
 
   // 2. Toggle Event Listener
@@ -41,10 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // We swap the innerHTML of the existing SVG, keeping size/classes intact
     if (body.classList.contains('light-mode')) {
       localStorage.setItem('theme', 'light');
-      themeIcon.innerHTML = sunContent;
+      themeIcon.innerHTML = moonContent;
     } else {
       localStorage.setItem('theme', 'dark');
-      themeIcon.innerHTML = moonContent;
+      themeIcon.innerHTML = sunContent;
     }
   });
 });
